@@ -60,6 +60,15 @@ def get_power():
     '''
     return random.randint(RANGE_DBM[0], RANGE_DBM[1])
 
+def exit_to_file(ind):
+    '''
+    '''
+    file = open('graph.txt', 'w')
+    file.write('-999 %d\n' % (GRID))
+    for i in range(AMOUNT):
+        file.write('%d,%d\t%d,%d\t%d\n' % (ind.positions[i][0][0], ind.positions[i][0][1], ind.positions[i][1][0], ind.positions[i][1][1], ind.powers[i]))
+    file.close()
+    exit()
 
 class Individual(object):
     '''
@@ -186,7 +195,6 @@ def evolution():
     '''
     Evolution Process
     '''
-
     random.seed(SEED)
     population = list()
 
@@ -212,12 +220,12 @@ def evolution():
                 m += ind.get_fitness()
             population.sort(key=lambda x: x.get_fitness())
 
-            print 'G: %d\tBestFit: %.1f\tAvgFit: %.1f' % (g, population[0].get_fitness(), m/float(POPULATION_SIZE))
+            print 'G: %d\tBest: %.1f\tAvg: %.1f' % (g, population[0].get_fitness(), m/float(POPULATION_SIZE))
 
             # Break Condition
             if population[0].get_fitness() == 0.0:
-                print '\nFOUND!\n', population[0]
-                break
+                print 'FOUND!'
+                exit_to_file(population[0])
 
             new_population = list()
             new_population.append(population[0]) # Elitism
@@ -248,18 +256,23 @@ def evolution():
     except KeyboardInterrupt:
         # If hit Control-C to stop the process
         print '\nSTOPPED'
-        print population[0]
+        exit_to_file(population[0])
 
     if g > GENERATIONS:
         # If number of generations run out without achieving the result
         print '\nTOTAL GENERATIONS REACHED'    
-        print population[0]
+        exit_to_file(population[0])
 
 
 if __name__ == '__main__':
 
-    GRID = int(sys.argv[1]) # Size of Grid
+    GRID = int(sys.argv[1]) # Grid size
     AMOUNT = int(sys.argv[2]) # Amount of senders-receivers
+
+    # Controls the number of nodes for the grid size.
+    #if GRID*GRID < AMOUNT:
+    #    print '[ERROR] Too much nodes for the grid.'
+    #    exit()
 
     # Start!
     evolution()
