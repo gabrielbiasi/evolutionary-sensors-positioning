@@ -18,18 +18,19 @@ from timeit import default_timer as timer
 #---------------------------- CONSTANTS ---------------------------#
 #------------------------------------------------------------------#
 RANGE_DBM = (-30, 10)     # Power range in dBm
-ALPHA = 3.0               # Path-loss Constant
+ALPHA = 3.0               # Path-loss constant
 BETA = 3.0                # Minimum signal-to-interference ratio
-NOISE = 10.e-9 # 10nW     # Ambient Noise
+NOISE = 10.e-9 # 10nW     # Ambient noise
 
-SEED = timer()            # timer() -> random | int -> Determinist
-GENERATIONS = 500         # Maximum number of generations
+SEED = timer()            # timer() -> random | int -> determinist
+GENERATIONS = 1000        # Maximum number of generations
 
 POPULATION_SIZE = 1000    # Size of population
-TOURNAMENT_SIZE = 2       # Size of Tournament Selection
+TOURNAMENT_SIZE = 2       # Size of tournament selection
+MUTATION_RATE = 0.5       # Rate of mutation on power values in dBm
 
-P_CROSSOVER = 0.5         # Probability of Crossover
-P_MUTATION = 0.5          # Probability of Mutation
+P_CROSSOVER = 0.5         # Probability of crossover
+P_MUTATION = 0.5          # Probability of mutation
 #------------------------------------------------------------------#
 
 
@@ -62,6 +63,8 @@ def get_power():
 
 def exit_to_file(ind):
     '''
+    Put all information about positions and power
+    values on the file 'graph.txt'.
     '''
     file = open('graph.txt', 'w')
     file.write('-999 %d\n' % (GRID))
@@ -76,7 +79,6 @@ class Individual(object):
     Stores the position of the sender and receiver nodes
     and their power values.
     '''
-
     __slots__ = ('positions', 'powers', 'fitness') # Python optimization for multiple instances
 
     def __init__(self, positions=[], powers=[]):
@@ -95,13 +97,13 @@ class Individual(object):
 
     def get_sinr(self, i):
         '''
-        The Signal-to-interference-plus-noise ratio Formula
+        The Signal-to-interference-plus-noise ratio formula
         *-*-* Whenever the nodes are in the same place,
         the formula tends to zero *-*-*
         '''
         try:
             v1 = float(dbm_to_watt(self.powers[i])/(distance(self.positions[i][0], self.positions[i][1])**ALPHA))
-        except:
+        except: # Division by zero
             v1 = 0.0
 
         v2 = 0.0
@@ -109,7 +111,7 @@ class Individual(object):
             if i != j:
                 try:
                     v2 += float(dbm_to_watt(self.powers[j])/(distance(self.positions[j][0], self.positions[i][1])**ALPHA))
-                except:
+                except: # Division by zero
                     v2 = 99999
 
         return float (v1 / (NOISE + v2))
@@ -174,6 +176,8 @@ def mutation(ind):
     '''
     new = copy.deepcopy(ind)
     new.fitness = -1
+
+    # Mutates the position of nodes
     for pos in new.positions:
         x = 0 if random.random() < 0.5 else 1
         y = 0 if random.random() < 0.5 else 1
@@ -184,9 +188,10 @@ def mutation(ind):
         else:
             pos[x][y] += z
 
+    # Mutates the power values
     for i in range(AMOUNT):
         if random.random() < 0.5:
-            z = 1 if random.random() < 0.5 else -1
+            z = MUTATION_RATE if random.random() < 0.5 else -MUTATION_RATE
             new.powers[i] += z
 
     return new
@@ -200,31 +205,35 @@ def evolution():
 
     # Creating the population
     for i in range(POPULATION_SIZE):
-        positions = list()
         powers = list()
+        positions = list()
+
         for j in range(AMOUNT):
-            positions.append([get_position(), get_position()])
             powers.append(get_power())
+            positions.append([get_position(), get_position()])
 
         ind = Individual(positions, powers)
         population.append(ind)
 
+    # Begining of generations
     try:
         g = 1
         while g <= GENERATIONS:
-            # Begining of Generation
 
-            # Calculating all the fitness values
+            # Calculating all the fitness values and the average
             m = 0.0
             for ind in population:
                 m += ind.get_fitness()
             population.sort(key=lambda x: x.get_fitness())
 
-            print 'G: %d\tBest: %.1f\tAvg: %.1f' % (g, population[0].get_fitness(), m/float(POPULATION_SIZE))
+            # Prints some informations about the last generation
+            average = m / float(POPULATION_SIZE)
+            sys.stdout.write('\rG: %d\tBest: %.1f\tAvg: %.1f' % (g, population[0].get_fitness(), average))
+            sys.stdout.flush()
 
-            # Break Condition
+            # Break condition
             if population[0].get_fitness() == 0.0:
-                print 'FOUND!'
+                print '\nFOUND!'
                 exit_to_file(population[0])
 
             new_population = list()
@@ -236,7 +245,7 @@ def evolution():
 
                 # Chance for crossover
                 if random.random() < P_CROSSOVER:
-                    ind1 = tournament(population) # Tournament Selection
+                    ind1 = tournament(population) # Tournament selection
                     ind2 = tournament(population)
                     c1, c2 = crossover(ind1, ind2)
                     new_population.append(c1)
@@ -249,7 +258,7 @@ def evolution():
                     new_population.append(mutation(ind))
                     size += 1
 
-            # End of Generation
+            # End of generation
             population = new_population
             g += 1
 
@@ -268,11 +277,6 @@ if __name__ == '__main__':
 
     GRID = int(sys.argv[1]) # Grid size
     AMOUNT = int(sys.argv[2]) # Amount of senders-receivers
-
-    # Controls the number of nodes for the grid size.
-    #if GRID*GRID < AMOUNT:
-    #    print '[ERROR] Too much nodes for the grid.'
-    #    exit()
 
     # Start!
     evolution()

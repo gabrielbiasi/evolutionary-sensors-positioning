@@ -67,7 +67,7 @@ if __name__ == '__main__':
     plt.ylim(-GRID*1.2, GRID*1.2)
     plt.xlim(-GRID*1.2, GRID*1.2)
 
-    plt.grid(True)
+    plt.grid(False)
     plt.draw()
 
     plt.show()
